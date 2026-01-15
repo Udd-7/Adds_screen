@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Advertisement</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .upload-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        h2 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 30px;
+            font-weight: 600;
+            position: relative;
+        }
+        
+        h2:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            border-radius: 2px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #d1d5db;
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f3f4f6;
+        }
+        
+        .upload-icon {
+            font-size: 50px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        
+        .custom-file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .custom-file-button {
+            display: inline-block;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .custom-file-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .file-name {
+            color: #555;
+            font-size: 14px;
+            margin-top: 15px;
+            min-height: 20px;
+            font-weight: 500;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.3);
+            letter-spacing: 0.5px;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.4);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .formats-info {
+            color: #777;
+            font-size: 14px;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .formats-info span {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .drag-text {
+            display: block;
+            color: #888;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 600px) {
+            .upload-container {
+                padding: 30px 20px;
+            }
+            
+            h2 {
+                font-size: 24px;
+            }
+            
+            .upload-area {
+                padding: 30px 15px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="upload-container">
+        <h2>Upload Advertisement</h2>
+        
+        <form action="http://localhost:5000/api/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+            <div class="upload-area">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="upload-text">
+                    Select a file to upload
+                </div>
+                
+                <div class="file-input-wrapper">
+                    <div class="custom-file-button">
+                        <i class="fas fa-folder-open"></i> Choose File
+                    </div>
+                    <input type="file" name="file" class="custom-file-input" id="fileInput" required>
+                </div>
+                
+                <div class="file-name" id="fileNameDisplay">
+                    No file selected
+                </div>
+                
+                <span class="drag-text">
+                    or drag and drop file here
+                </span>
+            </div>
+            
+            <button type="submit" class="submit-btn">
+                <i class="fas fa-upload"></i> Upload Advertisement
+            </button>
+            
+            <div class="formats-info">
+                Supported formats: <span>Images, PDF, Videos</span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadArea = document.querySelector('.upload-area');
+        const customFileButton = document.querySelector('.custom-file-button');
+        
+        // Update file name display when a file is selected
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const fileName = this.files[0].name;
+                const fileSize = (this.files[0].size / (1024 * 1024)).toFixed(2); // Convert to MB
+                fileNameDisplay.innerHTML = `<strong>${fileName}</strong> (${fileSize} MB)`;
+                fileNameDisplay.style.color = "#4CAF50";
+            } else {
+                fileNameDisplay.textContent = 'No file selected';
+                fileNameDisplay.style.color = "#555";
+            }
+        });
+        
+        // Make the entire upload area clickable
+        uploadArea.addEventListener('click', function(e) {
+            // Don't trigger if clicking on the button itself
+            if (!customFileButton.contains(e.target)) {
+                fileInput.click();
+            }
+        });
+        
+        // Handle drag and drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#4CAF50';
+            this.style.background = '#e8f5e9';
+        });
+        
+        uploadArea.addEventListener('dragleave', function() {
+            this.style.borderColor = '#d1d5db';
+            this.style.background = '#f9fafb';
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#d1d5db';
+            this.style.background = '#f9fafb';
+            
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                
+                // Trigger change event to update file name display
+                const event = new Event('change');
+                fileInput.dispatchEvent(event);
+            }
+        });
+        
+        // Form submission animation
+        uploadForm.addEventListener('submit', function(e) {
+            // If no file is selected, prevent form submission and show alert
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                alert('Please select a file to upload.');
+                fileInput.click();
+                return;
+            }
+            
+            // Add loading effect to submit button
+            const submitBtn = this.querySelector('.submit-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            submitBtn.disabled = true;
+            
+            // If the form submission fails, revert the button after 3 seconds
+            setTimeout(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
