@@ -1,102 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <title>Smart Signage Player</title>
 
 <style>
 html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background: black;
-  overflow: hidden;
+    margin: 0;
+    padding: 0;
+    background: black;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 #video, #image, #pdf {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: contain;
-  background: black;
-  display: none;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: none;
+    object-fit: contain;
+    background: black;
 }
 </style>
 </head>
 
 <body>
 
-<video id="video" autoplay muted></video>
+<video id="video" muted autoplay></video>
 <img id="image">
 <iframe id="pdf"></iframe>
 
 <script>
-const DEVICE_ID = "SCREEN_001";
-const SERVER = "https://coelanaglyphic-unscornfully-celsa.ngrok-free.dev";
-const WS_URL = "wss://coelanaglyphic-unscornfully-celsa.ngrok-free.dev/ws/" + DEVICE_ID;
+/* ================= CONFIG ================= */
+const params = new URLSearchParams(window.location.search);
+const DEVICE_ID = params.get("device");
 
-let playlist = [];
-let index = 0;
+if (!DEVICE_ID) {
+    alert("DEVICE_ID missing in URL");
+}
 
+const WS_URL =
+    (location.protocol === "https:" ? "wss://" : "ws://") +
+    location.host + "/ws/" + DEVICE_ID;
+
+/* ================= ELEMENTS ================= */
 const video = document.getElementById("video");
 const image = document.getElementById("image");
-const pdf = document.getElementById("pdf");
+const pdf   = document.getElementById("pdf");
 
+/* ================= STATE ================= */
+let playlist = [];
+let index = 0;
+let timer = null;
+let ws = null;
+
+/* ================= WEBSOCKET ================= */
+function connectWS() {
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+        console.log("✅ WebSocket connected");
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            playlist = JSON.parse(event.data);
+            index = 0;
+            clearTimeout(timer);
+            playNext();
+        } catch (e) {
+            console.error("Invalid playlist data", e);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log("❌ WS disconnected, retrying...");
+        setTimeout(connectWS, 3000);
+    };
+}
+
+connectWS();
+
+/* ================= HELPERS ================= */
 function hideAll() {
-  video.style.display = "none";
-  image.style.display = "none";
-  pdf.style.display = "none";
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+
+    video.style.display = "none";
+    image.style.display = "none";
+    pdf.style.display = "none";
+
+    clearTimeout(timer);
 }
 
+// 🔥 notify backend AFTER full display
+function notifyShow(itemId) {
+    fetch("/api/playlist/increment-show", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            deviceId: DEVICE_ID,
+            itemId: itemId
+        })
+    }).catch(() => {});
+}
+
+/* ================= PLAYER ================= */
 function playNext() {
-  if (playlist.length === 0) return;
+    if (!playlist || playlist.length === 0) return;
 
-  hideAll();
+    hideAll();
 
-  const item = playlist[index];
-  const url = SERVER + item.url;
+    const item = playlist[index];
+    const duration = (item.duration || 10) * 1000;
 
-  console.log("Playing:", item.type, url);
+    console.log("▶ Playing:", item);
 
-  if (item.type === "videos") {
-    video.src = url;
-    video.style.display = "block";
-    video.play();
-    video.onended = playNext;
-  }
+    /* ===== VIDEO ===== */
+    if (item.type === "videos") {
+        video.src = item.url;
+        video.style.display = "block";
+        video.currentTime = 0;
+        video.play();
 
-  else if (item.type === "images") {
-    image.src = url;
-    image.style.display = "block";
-    setTimeout(playNext, 8000);
-  }
+        video.onended = () => {
+            notifyShow(item.id);   // ✅ FULL VIDEO PLAYED
+            nextIndex();
+            playNext();
+        };
 
-  else if (item.type === "pdfs") {
-    pdf.src = url;
-    pdf.style.display = "block";
-    setTimeout(playNext, 15000);
-  }
+    /* ===== IMAGE ===== */
+    } else if (item.type === "images") {
+        image.src = item.url;
+        image.style.display = "block";
 
-  index = (index + 1) % playlist.length;
+        timer = setTimeout(() => {
+            notifyShow(item.id);   // ✅ AFTER FULL DURATION
+            nextIndex();
+            playNext();
+        }, duration);
+
+    /* ===== PDF ===== */
+    } else if (item.type === "pdfs") {
+        pdf.src = item.url;
+        pdf.style.display = "block";
+
+        timer = setTimeout(() => {
+            notifyShow(item.id);   
+            nextIndex();
+            playNext();
+        }, duration);
+    }
 }
 
-const ws = new WebSocket(WS_URL);
-
-ws.onopen = () => {
-  console.log("Connected to signage server");
-};
-
-ws.onmessage = (event) => {
-  playlist = JSON.parse(event.data);
-  index = 0;
-  playNext();
-};
-
-ws.onerror = (err) => {
-  console.error("WebSocket error", err);
-};
+function nextIndex() {
+    index++;
+    if (index >= playlist.length) index = 0;
+}
 </script>
 
 </body>
