@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Baap LCD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .glass-card {
+            background: rgba(33, 37, 41, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .btn-neon {
+            background: #0d6efd;
+            border: none;
+            box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+            transition: all 0.2s;
+        }
+
+        .btn-neon:hover {
+            box-shadow: 0 0 20px rgba(13, 110, 253, 0.7);
+            transform: scale(1.02);
+            background: #0b5ed7;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container p-4">
+        <div class="glass-card p-5 mx-auto">
+            <div class="text-center mb-4">
+                <i class="fa-solid fa-user-shield fa-3x text-primary mb-3"></i>
+                <h3 class="text-white">Admin Login</h3>
+                <p class="text-secondary small">Baap LCD Manager</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-3">
+                    <label class="form-label text-light">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-primary"><i
+                                class="fa-solid fa-user"></i></span>
+                        <input type="text" id="username" class="form-control bg-dark border-secondary text-light"
+                            required>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-light">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-primary"><i
+                                class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="password" class="form-control bg-dark border-secondary text-light"
+                            required>
+                    </div>
+                </div>
+
+                <div id="errorMsg" class="alert alert-danger d-none py-2 text-center small mb-3"></div>
+
+                <button type="submit" class="btn btn-primary btn-neon w-100 py-2 text-white fw-bold">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errBox = document.getElementById('errorMsg');
+
+            try {
+                const res = await axios.post('/api/login', { username, password });
+
+                if (res.data.status === 'ok') {
+                    // Success: Save token and redirect
+                    localStorage.setItem('authToken', res.data.token);
+                    window.location.href = '/';
+                } else {
+                    showError('Invalid credentials');
+                }
+            } catch (err) {
+                console.error(err);
+                showError('Login failed. Server error.');
+            }
+
+            function showError(msg) {
+                errBox.innerText = msg;
+                errBox.classList.remove('d-none');
+                setTimeout(() => errBox.classList.add('d-none'), 3000);
+            }
+        }
+    </script>
+</body>
+
+</html>

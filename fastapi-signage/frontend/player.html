@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Signage Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            overflow: hidden;
+        }
+
+
+        #container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        img,
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* OR cover for full immersion */
+            display: none;
+        }
+
+        .active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        #status {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: monospace;
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container">
+        <!-- Media elements will be injected here or swapped -->
+        <img id="imgPlayer" src="" alt="">
+        <video id="videoPlayer" src="" muted playsinline></video>
+    </div>
+
+    <div id="status">Connecting...</div>
+
+    <!-- EMERGENCY OVERLAY -->
+    <div id="emergencyOverlay">
+        <div id="emergencyContent"></div>
+    </div>
+
+    <!-- STREAM OVERLAY -->
+    <div id="streamOverlay">
+        <div id="streamContent"></div>
+    </div>
+
+    <style>
+        /* ... existing styles ... */
+        #emergencyOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #dc3545;
+            z-index: 9999;
+            display: none;
+            /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        #streamOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 9998;
+            display: none;
+        }
+
+        #streamContent {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #emergencyContent {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #emergencyContent h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+
+    <script>
+        // --- CONFIG ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceId = urlParams.get('deviceId') || 'SCREEN_1';
+
+        // Auto-switch to WSS if served over HTTPS (required for Ngrok/Cloud)
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const WS_URL = `${protocol}://${window.location.host}/ws/${deviceId}`;
+
+        const API_BASE = '/api';
+
+        let playlist = [];
+        let currentIndex = -1;
+        let timer = null;
+
+        const imgPlayer = document.getElementById('imgPlayer');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const statusEl = document.getElementById('status');
+
+        // --- WEBSOCKET ---
+        function connect() {
+            const ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                console.log('Connected');
+                statusEl.innerText = `● ${deviceId}`;
+                statusEl.style.color = 'lime';
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                // CHECK FOR EMERGENCY
+                if (data.event === "emergency") {
+                    showEmergency(data.data);
+                }
+                else if (data.event === "emergency_stop") {
+                    hideEmergency();
+                }
+                else if (data.event === "stream_start") {
+                    showStream(data.data.url);
+                }
+                else if (data.event === "stream_stop") {
+                    hideStream();
+                }
+                else {
+                    // Normal Playlist Update
+                    console.log('Playlist Update:', data);
+                    playlist = data;
+
+                    // If stopped or empty, restart
+                    if (playlist.length > 0 && currentIndex === -1) {
+                        playNext();
+                    } else if (playlist.length === 0) {
+                        stopPlayback();
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                statusEl.innerText = 'Disconnected';
+                statusEl.style.color = 'red';
+                setTimeout(connect, 3000); // Reconnect
+            };
+        }
+
+        // --- PLAYBACK ENGINE ---
+        function stopPlayback() {
+            clearTimeout(timer);
+            imgPlayer.classList.remove('active');
+            videoPlayer.classList.remove('active');
+            videoPlayer.pause();
+            currentIndex = -1;
+        }
+
+        async function playNext() {
+            clearTimeout(timer);
+
+            if (playlist.length === 0) return;
+
+            currentIndex = (currentIndex + 1) % playlist.length;
+            const item = playlist[currentIndex];
+
+            console.log('Playing:', item.url);
+
+            // Increment Show Count (Async, don't await)
+            fetch(`${API_BASE}/playlist/increment-show`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceId, itemId: item.id })
+            }).catch(console.error);
+
+            // Hide all
+            imgPlayer.classList.remove('active');
+            videoPlayer.classList.remove('active');
+            videoPlayer.pause();
+
+            if (item.type === 'images') {
+                imgPlayer.src = item.url;
+                imgPlayer.classList.add('active');
+
+                // Next after duration
+                timer = setTimeout(playNext, item.duration * 1000);
+
+            } else if (item.type === 'videos') {
+                videoPlayer.src = item.url;
+                videoPlayer.classList.add('active');
+
+                try {
+                    await videoPlayer.play();
+                } catch (e) {
+                    console.error('Autoplay failed', e);
+                }
+
+                // If duration is set manually > 0, use it. Otherwise use video duration.
+                // However, for videos, it's often better to wait for 'ended' event 
+                // BUT user might have set a specific cut-off time.
+
+                // Let's use the 'ended' event OR the manual duration, whichever comes first?
+                // For simplicity, if duration is default (e.g. 10s) it might cut off long videos.
+                // Let's rely on 'ended' event primarily, unless strict timing is needed.
+                // Plan: Use manual duration if provided and reasonable, else 'ended'.
+
+                // Actually, backend has a default duration. Let's respect the duration from JSON for consistency.
+                // But if video is shorter, we should proceed? 
+                // Let's stick to the simpler timer for now as per "Digital Signage" logic (usually fixed slots).
+
+                timer = setTimeout(playNext, item.duration * 1000);
+            }
+        }
+
+        // --- EMERGENCY LOGIC ---
+        let isEmergency = false;
+
+        function showEmergency(data) {
+            isEmergency = true;
+            const overlay = document.getElementById('emergencyOverlay');
+            const content = document.getElementById('emergencyContent');
+
+            // Pause any running normal content
+            clearTimeout(timer);
+            videoPlayer.pause();
+
+            if (data.type === 'text') {
+                overlay.style.background = '#dc3545'; // Red for text
+                content.innerHTML = `
+                    <div style="font-size: 80px; margin-bottom: 20px;">⚠️</div>
+                    <h1>${data.content}</h1>
+                `;
+            } else {
+                overlay.style.background = 'black'; // Black for media
+
+                if (data.type === 'images') {
+                    content.innerHTML = `<img src="${data.content}" style="display: block; width: 100%; height: 100%; object-fit: contain;">`;
+                } else if (data.type === 'videos') {
+                    content.innerHTML = `<video src="${data.content}" autoplay loop muted style="display: block; width: 100%; height: 100%; object-fit: contain;"></video>`;
+                } else if (data.type === 'pdfs') {
+                    content.innerHTML = `<iframe src="${data.content}" style="display: block; width: 100%; height: 100%; border: none; background: white;"></iframe>`;
+                }
+            }
+
+            overlay.style.display = 'flex';
+        }
+
+        function hideEmergency() {
+            if (!isEmergency) return;
+            isEmergency = false;
+            document.getElementById('emergencyOverlay').style.display = 'none';
+
+            // If there's a stream active, don't resume playlist yet
+            if (isStreaming) {
+                // Keep stream overlay visible
+            } else {
+                playNext(); // Resume normal loop
+            }
+        }
+
+        // --- STREAM LOGIC ---
+        let isStreaming = false;
+        let hls = null;
+
+        function showStream(url) {
+            isStreaming = true;
+            const overlay = document.getElementById('streamOverlay');
+            const content = document.getElementById('streamContent');
+            overlay.style.display = 'block';
+
+            // Stop normal playlist
+            clearTimeout(timer);
+            videoPlayer.pause();
+
+            // 1. Check for YouTube
+            const youtubeId = getYouTubeId(url);
+            if (youtubeId) {
+                // Using loop=1 and playlist=ID is the official way to loop a single video
+                const embedUrl = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&rel=0&controls=0&showinfo=0&iv_load_policy=3&playsinline=1`;
+                content.innerHTML = `<iframe src="${embedUrl}" 
+                    style="width:100%; height:100%; border:none;" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowfullscreen></iframe>`;
+                return;
+            }
+
+            // 2. Normal Logic
+            const ext = url.split('?')[0].split('.').pop().toLowerCase();
+
+            if (Hls.isSupported() && url.includes('.m3u8')) {
+                content.innerHTML = `<video id="streamVideo" muted playsinline style="width:100%; height:100%; object-fit:contain;"></video>`;
+                const video = document.getElementById('streamVideo');
+                if (hls) hls.destroy();
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+            } else if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+                content.innerHTML = `<img src="${url}" style="width:100%; height:100%; object-fit:contain;">`;
+            } else if (ext === 'pdf') {
+                content.innerHTML = `<iframe src="${url}" style="width:100%; height:100%; border:none; background:white;"></iframe>`;
+            } else {
+                // Video fallback
+                content.innerHTML = `<video id="streamVideo" src="${url}" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:contain;"></video>`;
+                const video = document.getElementById('streamVideo');
+                video.play().catch(console.error);
+            }
+        }
+
+        function getYouTubeId(url) {
+            // Improved regex to handle more YT URL formats
+            const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+            const match = url.match(regExp);
+            const id = (match && match[7].length === 11) ? match[7] : null;
+            return id;
+        }
+
+        function hideStream() {
+            if (!isStreaming) return;
+            isStreaming = false;
+            const overlay = document.getElementById('streamOverlay');
+            const content = document.getElementById('streamContent');
+            overlay.style.display = 'none';
+            content.innerHTML = "";
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            if (!isEmergency) playNext();
+        }
+
+        // --- START ---
+        connect();
+
+    </script>
+</body>
+
+</html>

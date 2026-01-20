@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- AUTH CHECK: Must be first hook -->
+    <script>
+        if (!localStorage.getItem('authToken')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+    <title>Smart Signage Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --glass-bg: rgba(33, 37, 41, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-accent: #0d6efd;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(15, 23, 42, 0.95);
+            border-right: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            height: 100vh;
+            padding: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            margin-left: var(--sidebar-width);
+            padding: 2rem;
+            width: calc(100% - var(--sidebar-width));
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Sidebar Nav */
+        .nav-link-custom {
+            color: rgba(255, 255, 255, 0.7);
+            padding: 0.8rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link-custom:hover,
+        .nav-link-custom.active {
+            background: rgba(13, 110, 253, 0.15);
+            color: #fff;
+            border: 1px solid rgba(13, 110, 253, 0.3);
+        }
+
+        .nav-link-custom i {
+            width: 25px;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        .card-hover {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--glass-border);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--neon-accent);
+            background: rgba(13, 110, 253, 0.1);
+        }
+
+        .preview-thumb {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.mobile-show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 1rem;
+            }
+
+            .mobile-toggle {
+                display: block !important;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+
+<body class="text-light">
+
+    <div class="app-container">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="mb-4">
+                <a class="navbar-brand fw-bold text-white fs-4" href="#">
+                    <i class="fa-solid fa-tv me-2 text-primary"></i>Baap LCD
+                </a>
+                <div class="text-muted small mt-1">Manager V2.0</div>
+            </div>
+
+            <!-- Screen Control -->
+            <div class="glass-panel p-3 mb-4 bg-opacity-10 bg-white border-0">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="text-secondary small fw-bold mb-0 text-uppercase">Screens</label>
+                    <button id="bulkToggleBtn" class="btn btn-outline-primary btn-xs py-0 px-2"
+                        style="font-size: 0.7rem;" onclick="toggleBulkMode()">Bulk Select</button>
+                </div>
+
+                <div id="singleSelectGroup">
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text bg-dark border-secondary text-secondary">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="singleScreenSearch"
+                            class="form-control bg-dark border-secondary text-light" placeholder="Find screen..."
+                            oninput="filterSingleSelect()">
+                    </div>
+                    <select id="deviceIdInput" class="form-select bg-dark border-secondary text-light mb-3" size="1">
+                        <option value="" disabled selected>Loading...</option>
+                    </select>
+                </div>
+
+                <div id="bulkSelectGroup" class="d-none">
+                    <!-- Group Management -->
+                    <div class="mb-3">
+                        <label class="text-secondary smaller text-uppercase fw-bold mb-1 d-block"
+                            style="font-size: 0.6rem;">Saved Groups</label>
+                        <select id="groupSelect"
+                            class="form-select form-select-sm bg-dark border-secondary text-light mb-2"
+                            onchange="applyGroup(this.value)">
+                            <option value="">Select a group...</option>
+                        </select>
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="text" id="newGroupName"
+                                class="form-control bg-dark border-secondary text-light" placeholder="Group Name...">
+                            <button class="btn btn-outline-success" onclick="saveCurrentAsGroup()"
+                                title="Save selection as group">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                            </button>
+                        </div>
+                        <div id="lastUsedContainer" class="d-none">
+                            <button class="btn btn-xs btn-warning w-100 py-1" style="font-size: 0.65rem;"
+                                onclick="useLastUsed()">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Use Last Used Group
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-dark border-secondary text-secondary"><i
+                                    class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="screenSearchInput"
+                                class="form-control bg-dark border-secondary text-light" placeholder="Search screens..."
+                                oninput="filterScreens()">
+                        </div>
+                    </div>
+                    <div id="screenCheckboxList" class="p-2 bg-dark rounded border border-secondary mb-3"
+                        style="max-height: 250px; overflow-y: auto;">
+                        <!-- Checkboxes injected here -->
+                    </div>
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                        <button class="btn btn-xs btn-outline-secondary py-0 px-2 flex-grow-1"
+                            style="font-size: 0.65rem;" onclick="selectAllVisible(true)">Check Visible</button>
+                        <button class="btn btn-xs btn-outline-secondary py-0 px-2 flex-grow-1"
+                            style="font-size: 0.65rem;" onclick="selectAllVisible(false)">Uncheck All</button>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary flex-grow-1" data-bs-toggle="modal"
+                        data-bs-target="#addScreenModal">
+                        <i class="fa-solid fa-plus me-1"></i> Add
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCurrentScreen()" title="Delete Screen">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Nav Links -->
+            <div class="nav flex-column mb-auto">
+                <a href="/index.html" class="nav-link-custom active">
+                    <i class="fa-solid fa-gauge-high"></i> Dashboard
+                </a>
+                <a href="/stream.html" class="nav-link-custom">
+                    <i class="fa-solid fa-video text-danger"></i> Live Stream
+                </a>
+                <a href="#" class="nav-link-custom" onclick="loadPlaylist()">
+                    <i class="fa-solid fa-rotate"></i> Refresh Data
+                </a>
+                <a id="playerLink" href="#" target="_blank" class="nav-link-custom">
+                    <i class="fa-solid fa-play"></i> Open Player
+                </a>
+                <a href="#" class="nav-link-custom" onclick="exportData()">
+                    <i class="fa-solid fa-file-export"></i> Export JSON
+                </a>
+            </div>
+
+            <div class="mt-auto">
+                <button class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2"
+                    onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+
+            <!-- Mobile Toggle -->
+            <button class="btn btn-dark mobile-toggle d-none mb-3"
+                onclick="document.querySelector('.sidebar').classList.toggle('mobile-show')">
+                <i class="fa-solid fa-bars"></i> Menu
+            </button>
+
+
+
+            <div class="row g-4">
+                <!-- Upload Section -->
+                <div class="col-xl-4 col-md-5">
+                    <div class="glass-panel p-4 h-100 d-flex flex-column">
+                        <h5 class="mb-4"><i class="fa-solid fa-cloud-arrow-up me-2 text-primary"></i>Add Content</h5>
+
+                        <div id="dropZone"
+                            class="upload-zone flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4 mb-3">
+                            <i class="fa-solid fa-images fa-3x mb-3 text-secondary"></i>
+                            <p class="mb-0 text-muted">Drag media here<br><small>or click to browse</small></p>
+                            <input type="file" id="fileInput" class="d-none" multiple accept="image/*,video/*">
+                        </div>
+
+                        <div id="uploadStatus" class="alert d-none mb-3 p-2 small"></div>
+
+                        <button class="btn btn-primary w-100" onclick="document.getElementById('fileInput').click()">
+                            <i class="fa-solid fa-folder-open me-2"></i>Select Files
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Playlist Section -->
+                <div class="col-xl-8 col-md-7">
+                    <div class="glass-panel p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h5 class="mb-1"><i class="fa-solid fa-list-ul me-2 text-primary"></i>Active Playlist
+                                </h5>
+                                <span id="currentDeviceBadge"
+                                    class="badge bg-primary bg-opacity-25 text-primary border border-primary">Loading...</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="clearPlaylist()">
+                                <i class="fa-solid fa-trash me-2"></i>Clear All
+                            </button>
+                        </div>
+
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-dark table-hover align-middle"
+                                style="--bs-table-bg: transparent;">
+                                <thead class="sticky-top bg-dark">
+                                    <tr>
+                                        <th style="width: 80px;">Preview</th>
+                                        <th>Type</th>
+                                        <th style="width: 100px;">Duration (s)</th>
+                                        <th>Plays</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="playlistTable">
+                                    <!-- Items will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div id="emptyState" class="text-center py-5 text-muted d-none">
+                            <i class="fa-regular fa-folder-open fa-3x mb-3 opacity-50"></i>
+                            <p>Playlist is empty</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD SCREEN MODAL -->
+    <div class="modal fade" id="addScreenModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-bg-dark border border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="fa-solid fa-desktop me-2"></i>Add New Screen</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Screen Number</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-light">SCREEN_</span>
+                            <input type="number" id="newScreenNum"
+                                class="form-control bg-dark border-secondary text-light" placeholder="1" min="1">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Location / Description</label>
+                        <input type="text" id="newScreenLoc" class="form-control bg-dark border-secondary text-light"
+                            placeholder="Enter Location">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addNewScreen()">Create Screen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // --- CONFIG ---
+        const API_BASE = '/api'; // Relative path since served from same origin
+        let currentDevice = 'SCREEN_1';
+        let isBulkMode = false;
+        let lastChecked = null; // For shift-click range selection
+        let savedGroups = {};   // { name: [ids] }
+        let allScreens = {};    // Global store for filtering
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchScreens();
+            fetchGroups(); // Load saved groups
+            setupDragDrop();
+
+            document.getElementById('deviceIdInput').addEventListener('change', (e) => {
+                currentDevice = e.target.value;
+                document.getElementById('currentDeviceBadge').innerText = currentDevice;
+
+                // Update Player Link with current device
+                document.getElementById('playerLink').href = `/player.html?deviceId=${currentDevice}`;
+
+                loadPlaylist();
+            });
+        });
+
+        // --- SCREEN MANAGEMENT ---
+        async function fetchScreens() {
+            try {
+                const res = await axios.get(`${API_BASE}/screens`);
+                allScreens = res.data; // Store globally
+                const screens = allScreens;
+                const select = document.getElementById('deviceIdInput');
+                const checkboxList = document.getElementById('screenCheckboxList');
+
+                select.innerHTML = '<option value="" disabled selected>Select Screen...</option>';
+                checkboxList.innerHTML = '';
+
+                const sortedKeys = Object.keys(screens).sort((a, b) => {
+                    const n1 = parseInt(a.replace('SCREEN_', '')) || 0;
+                    const n2 = parseInt(b.replace('SCREEN_', '')) || 0;
+                    return n1 - n2;
+                });
+
+                if (sortedKeys.length === 0) {
+                    select.innerHTML = '<option value="" disabled selected>No Screens Found</option>';
+                    checkboxList.innerHTML = '<div class="text-muted small p-2">No screens found</div>';
+                    return;
+                }
+
+                sortedKeys.forEach(key => {
+                    const s = screens[key];
+
+                    // Dropdown Option
+                    const opt = document.createElement('option');
+                    opt.value = s.id || key;
+                    opt.innerText = `${key} - ${s.location}`;
+                    select.appendChild(opt);
+
+                    // Checkbox
+                    const div = document.createElement('div');
+                    div.className = 'form-check mb-1 screen-item-row';
+                    div.dataset.key = key.toLowerCase();
+                    div.dataset.location = s.location.toLowerCase();
+                    div.innerHTML = `
+                        <input class="form-check-input screen-checkbox" type="checkbox" value="${key}" id="chk_${key}" onclick="handleCheckboxClick(event, this)">
+                        <label class="form-check-label small" for="chk_${key}">${key} (${s.location})</label>
+                    `;
+                    checkboxList.appendChild(div);
+                });
+
+                // Auto-select first one if not set
+                if (sortedKeys.length > 0 && !isBulkMode) {
+                    select.value = sortedKeys[0];
+                    select.dispatchEvent(new Event('change'));
+                }
+
+                // Sync with groups dropdown if any
+                const groupSelect = document.getElementById('groupSelect');
+                if (groupSelect) groupSelect.value = "";
+
+                showLastUsedSuggestion();
+
+            } catch (e) { console.error("Failed to fetch screens", e); }
+        }
+
+        function filterSingleSelect() {
+            const query = document.getElementById('singleScreenSearch').value.toLowerCase();
+            const select = document.getElementById('deviceIdInput');
+            const currentVal = select.value;
+
+            select.innerHTML = '';
+
+            const sortedKeys = Object.keys(allScreens).sort((a, b) => {
+                const n1 = parseInt(a.replace('SCREEN_', '')) || 0;
+                const n2 = parseInt(b.replace('SCREEN_', '')) || 0;
+                return n1 - n2;
+            });
+
+            let matchFound = false;
+            sortedKeys.forEach(key => {
+                const s = allScreens[key];
+                const text = `${key} - ${s.location}`.toLowerCase();
+
+                if (text.includes(query)) {
+                    const opt = document.createElement('option');
+                    opt.value = key;
+                    opt.innerText = `${key} - ${s.location}`;
+                    select.appendChild(opt);
+                    if (key === currentVal) matchFound = true;
+                }
+            });
+
+            if (matchFound) {
+                select.value = currentVal;
+            } else if (select.options.length > 0) {
+                // If current selected is filtered out, select the first visible one
+                // But don't trigger change automatically to avoid surprising the user
+                // select.selectedIndex = 0; 
+            }
+        }
+
+        function showLastUsedSuggestion() {
+            const lastUsed = localStorage.getItem('lastUsedScreens');
+            const container = document.getElementById('lastUsedContainer');
+            if (lastUsed && container) {
+                container.classList.remove('d-none');
+            }
+        }
+
+        function useLastUsed() {
+            const lastUsed = localStorage.getItem('lastUsedScreens');
+            if (!lastUsed) return;
+            const targetIds = JSON.parse(lastUsed);
+
+            document.querySelectorAll('.screen-checkbox').forEach(cb => cb.checked = false);
+            targetIds.forEach(id => {
+                const cb = document.getElementById(`chk_${id}`);
+                if (cb) cb.checked = true;
+            });
+        }
+
+        async function fetchGroups() {
+            try {
+                const res = await axios.get(`${API_BASE}/groups`);
+                savedGroups = res.data;
+                const select = document.getElementById('groupSelect');
+                if (!select) return;
+
+                select.innerHTML = '<option value="">Select a group...</option>';
+                Object.keys(savedGroups).sort().forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.innerText = name;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.error("Failed to fetch groups", e); }
+        }
+
+        function applyGroup(name) {
+            if (!name || !savedGroups[name]) return;
+            const targetIds = savedGroups[name];
+
+            // Uncheck all first
+            document.querySelectorAll('.screen-checkbox').forEach(cb => cb.checked = false);
+
+            // Check targets
+            targetIds.forEach(id => {
+                const cb = document.getElementById(`chk_${id}`);
+                if (cb) cb.checked = true;
+            });
+        }
+
+        async function saveCurrentAsGroup() {
+            const name = document.getElementById('newGroupName').value.trim();
+            if (!name) return alert("Please enter a name for the group");
+
+            const checked = document.querySelectorAll('.screen-checkbox:checked');
+            const devices = Array.from(checked).map(cb => cb.value);
+
+            if (devices.length === 0) return alert("Please select at least one screen first!");
+
+            try {
+                await axios.post(`${API_BASE}/groups/add`, { name, devices });
+                alert(`✅ Group "${name}" saved!`);
+                document.getElementById('newGroupName').value = '';
+                await fetchGroups();
+            } catch (e) {
+                console.error(e);
+                alert("Failed to save group");
+            }
+        }
+
+        function toggleBulkMode() {
+            isBulkMode = !isBulkMode;
+            const btn = document.getElementById('bulkToggleBtn');
+            const singleGroup = document.getElementById('singleSelectGroup');
+            const bulkGroup = document.getElementById('bulkSelectGroup');
+            const badge = document.getElementById('currentDeviceBadge');
+
+            if (isBulkMode) {
+                btn.innerText = 'Exit Bulk Mode';
+                btn.classList.replace('btn-outline-primary', 'btn-warning');
+                singleGroup.classList.add('d-none');
+                bulkGroup.classList.remove('d-none');
+                badge.innerText = 'MULTI-SCREEN MODE';
+                badge.classList.replace('bg-primary', 'bg-warning');
+                document.getElementById('playlistTable').innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">Select screens on the left and upload files to add to all of them at once.</td></tr>';
+            } else {
+                btn.innerText = 'Bulk Select';
+                btn.classList.replace('btn-warning', 'btn-outline-primary');
+                singleGroup.classList.remove('d-none');
+                bulkGroup.classList.add('d-none');
+                badge.classList.replace('bg-warning', 'bg-primary');
+                fetchScreens(); // Re-sync single selection
+            }
+        }
+
+        function filterScreens() {
+            const query = document.getElementById('screenSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('.screen-item-row');
+
+            rows.forEach(row => {
+                const match = row.dataset.key.includes(query) || row.dataset.location.includes(query);
+                row.classList.toggle('d-none', !match);
+            });
+        }
+
+        function selectAllVisible(check) {
+            const checkboxes = document.querySelectorAll('.screen-item-row:not(.d-none) .screen-checkbox');
+            checkboxes.forEach(cb => cb.checked = check);
+        }
+
+        function handleCheckboxClick(e, current) {
+            if (e.shiftKey && lastChecked) {
+                const checkboxes = Array.from(document.querySelectorAll('.screen-checkbox'));
+                let start = checkboxes.indexOf(current);
+                let end = checkboxes.indexOf(lastChecked);
+
+                const subset = checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1);
+                subset.forEach(cb => cb.checked = current.checked);
+            }
+
+            lastChecked = current;
+        }
+        async function addNewScreen() {
+            const num = document.getElementById('newScreenNum').value;
+            const loc = document.getElementById('newScreenLoc').value;
+
+            if (!num) return alert("Please enter a screen number");
+
+            try {
+                const res = await axios.post(`${API_BASE}/screens/add`, {
+                    number: num,
+                    location: loc
+                });
+
+                if (res.data.status === 'ok') {
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addScreenModal'));
+                    modal.hide();
+
+                    // Refresh List
+                    await fetchScreens();
+
+                    // Clear inputs
+                    document.getElementById('newScreenNum').value = '';
+                    document.getElementById('newScreenLoc').value = '';
+
+                    alert(`✅ Created ${res.data.device_id}`);
+                } else {
+                    alert(res.data.error || "Failed to create");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error creating screen");
+            }
+        }
+
+        async function deleteCurrentScreen() {
+            if (!currentDevice) return alert("No screen selected!");
+
+            if (!confirm(`Are you sure you want to PERMANENTLY DELETE ${currentDevice}? \nThis cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const res = await axios.post(`${API_BASE}/screens/delete`, {
+                    deviceId: currentDevice
+                });
+
+                if (res.data.status === 'deleted') {
+                    alert(`🗑️ Deleted ${currentDevice}`);
+                    currentDevice = null;
+                    // Fix: Clear the table and show empty state appropriately
+                    document.getElementById('playlistTable').innerHTML = '';
+                    document.getElementById('currentDeviceBadge').innerText = 'Select Screen...';
+                    await fetchScreens();
+                } else {
+                    alert(res.data.error || "Failed to delete");
+                }
+            } catch (e) {
+                console.error(e);
+                const msg = e.response && e.response.data && e.response.data.error
+                    ? e.response.data.error
+                    : e.message;
+                alert(`Error deleting screen: ${msg}`);
+            }
+        }
+
+        // --- UPLOAD ---
+        function setupDragDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+        }
+
+        async function handleFiles(files) {
+            if (!files.length) return;
+
+            // Determine targets
+            let targets = [];
+            if (isBulkMode) {
+                const checked = document.querySelectorAll('.screen-checkbox:checked');
+                targets = Array.from(checked).map(cb => cb.value);
+            } else {
+                if (currentDevice) targets = [currentDevice];
+            }
+
+            if (targets.length === 0) {
+                return alert("Please select at least one screen on the left!");
+            }
+
+            // Save as Last used
+            if (isBulkMode) {
+                localStorage.setItem('lastUsedScreens', JSON.stringify(targets));
+                showLastUsedSuggestion();
+            }
+
+            const status = document.getElementById('uploadStatus');
+            status.className = 'alert alert-info mt-3';
+            status.innerText = `Uploading to ${targets.length} screen(s)...`;
+            status.classList.remove('d-none');
+
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    // 1. Upload once
+                    const res = await axios.post(`${API_BASE}/upload`, formData);
+                    const data = res.data;
+
+                    // 2. Add to all target screens
+                    for (const deviceId of targets) {
+                        await axios.post(`${API_BASE}/playlist/add`, {
+                            deviceId: deviceId,
+                            filename: data.filename,
+                            type: data.type,
+                            duration: data.type === 'videos' ? 30 : 10
+                        });
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    status.className = 'alert alert-danger mt-3';
+                    status.innerText = 'Upload failed!';
+                    return;
+                }
+            }
+
+            status.className = 'alert alert-success mt-3';
+            status.innerText = `Done! Distributed to ${targets.length} screen(s).`;
+            setTimeout(() => status.classList.add('d-none'), 3000);
+
+            if (!isBulkMode) loadPlaylist();
+        }
+
+        // --- PLAYLIST OPS ---
+        async function loadPlaylist() {
+            try {
+                const res = await axios.get(`${API_BASE}/playlist/${currentDevice}`);
+                renderPlaylist(res.data);
+            } catch (err) {
+                console.error('Failed to load playlist', err);
+            }
+        }
+
+        function renderPlaylist(items) {
+            const tbody = document.getElementById('playlistTable');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            if (!items || items.length === 0) {
+                emptyState.classList.remove('d-none');
+                return;
+            }
+            emptyState.classList.add('d-none');
+
+            items.forEach(item => {
+                const tr = document.createElement('tr');
+
+                // Preview Logic
+                let preview = '';
+                if (item.type === 'images') {
+                    preview = `<img src="${item.url}" class="preview-thumb shadow-sm">`;
+                } else if (item.type === 'videos') {
+                    preview = `<video src="${item.url}" class="preview-thumb shadow-sm"></video>`;
+                } else {
+                    preview = `<div class="preview-thumb bg-secondary d-flex align-items-center justify-content-center"><i class="fa-solid fa-file-pdf"></i></div>`;
+                }
+
+                tr.innerHTML = `
+                    <td>${preview}</td>
+                    <td><span class="badge bg-secondary">${item.type}</span></td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary" 
+                            style="width: 80px;" 
+                            value="${item.duration}" 
+                            onchange="updateDuration('${item.id}', this.value)">
+                    </td>
+                    <td class="text-muted"><small>${item.show_count || 0}</small></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('${item.id}')">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function updateDuration(itemId, duration) {
+            try {
+                await axios.post(`${API_BASE}/playlist/update-duration`, {
+                    deviceId: currentDevice,
+                    itemId: itemId,
+                    duration: parseInt(duration)
+                });
+                // No need to reload, silent update
+            } catch (err) {
+                alert('Failed to update duration');
+            }
+        }
+
+        async function removeItem(itemId) {
+            if (!confirm('Remove this item?')) return;
+            try {
+                await axios.post(`${API_BASE}/playlist/remove`, {
+                    deviceId: currentDevice,
+                    itemId: itemId
+                });
+                loadPlaylist();
+            } catch (err) {
+                alert('Failed to remove item');
+            }
+        }
+
+        async function clearPlaylist() {
+            if (!confirm('Clear entire playlist?')) return;
+            try {
+                await axios.post(`${API_BASE}/playlist/clear`, {
+                    deviceId: currentDevice
+                });
+                loadPlaylist();
+            } catch (err) {
+                alert('Failed to clear');
+            }
+        }
+
+        async function exportData() {
+            try {
+                const res = await axios.get(`${API_BASE}/export`);
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.data, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "playlist_data.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            } catch (err) {
+                console.error(err);
+                alert('Failed to export data');
+            }
+        }
+
+        function logout() {
+            if (confirm('Logout?')) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+        }
+
+        // --- EMERGENCY ---
+        function toggleEmerMode() {
+            const isText = document.getElementById('emerModeText').checked;
+            document.getElementById('emerTextInput').classList.toggle('d-none', !isText);
+            document.getElementById('emerMediaInput').classList.toggle('d-none', isText);
+        }
+
+        async function triggerEmergency() {
+            const isText = document.getElementById('emerModeText').checked;
+
+            if (!confirm("⚠️ This will interrupt ALL screens. Proceed?")) return;
+
+            try {
+                let payload = {};
+
+                if (isText) {
+                    const text = document.getElementById('emergencyText').value;
+                    if (!text) return alert("Enter a message!");
+                    payload = { type: 'text', content: text, style: 'danger' };
+                } else {
+                    const fileInput = document.getElementById('emergencyFile');
+                    if (fileInput.files.length === 0) return alert("Select a file!");
+
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+
+                    // Upload first
+                    const res = await axios.post(`${API_BASE}/upload`, formData);
+                    payload = { type: res.data.type, content: res.data.url, style: 'danger' };
+                }
+
+                await axios.post(`${API_BASE}/emergency/active`, payload);
+                alert("🚨 Emergency Broadcast ACTIVE!");
+            } catch (e) { console.error(e); alert("Failed to trigger emergency"); }
+        }
+
+        async function stopEmergency() {
+            try {
+                await axios.post(`${API_BASE}/emergency/clear`);
+                alert("✅ Override Stopped. Normal Schedule Resumed.");
+                document.getElementById('emergencyText').value = '';
+            } catch (e) { console.error(e); }
+        }
+    </script>
+</body>
+
+</html>

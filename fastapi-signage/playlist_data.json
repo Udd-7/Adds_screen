@@ -1,82 +1,46 @@
 {
-  "SCREEN_001": [
-    {
-      "id": "6133a827-c15d-4058-8dc7-63e9c7f4e2d0",
-      "type": "images",
-      "url": "/uploads/images/1768625485531_images.jpg",
-      "duration": 10,
-      "show_count": 112
-    },
-    {
-      "id": "d018da23-5377-4416-b969-a97aedc5d95f",
-      "type": "images",
-      "url": "/uploads/images/1768625516098_baap_C_img.png",
-      "duration": 10,
-      "show_count": 104
-    },
-    {
-      "id": "7693ece5-cd4c-4b1f-85bc-b5b806c0c072",
-      "type": "images",
-      "url": "/uploads/images/1768625568054_WhatsApp Image 2026-01-17 at 10.06.59 AM.jpeg",
-      "duration": 5,
-      "show_count": 99
-    },
-    {
-      "id": "86c1402d-c8f1-4583-af37-58c84e34e693",
-      "type": "images",
-      "url": "/uploads/images/1768625625022_WhatsApp Image 2026-01-17 at 10.06.59 AM (1).jpeg",
-      "duration": 5,
-      "show_count": 87
-    },
-    {
-      "id": "da3a8b22-8657-4e06-a9f2-e0b6af9c7bfd",
-      "type": "images",
-      "url": "/uploads/images/1768625772845_WhatsApp Image 2026-01-17 at 10.06.59 AM (2).jpeg",
-      "duration": 5,
-      "show_count": 88
-    },
-    {
-      "id": "546ffee8-0f48-41c0-8856-2ba0c71459d7",
-      "type": "images",
-      "url": "/uploads/images/1768625820374_WhatsApp Image 2026-01-17 at 10.06.58 AM.jpeg",
-      "duration": 5,
-      "show_count": 89
-    }
-  ],
-  "SCREEN_002": [
-    {
-      "id": "8a7c4416-85b2-45f7-84b7-e892a33b3772",
-      "type": "images",
-      "url": "/uploads/images/1768628427570_Media (4).jpg",
-      "duration": 15,
-      "show_count": 85
-    }
-  ],
-  "SCREEN_003": [
-    {
-      "id": "f3dd9086-37d1-4875-a205-6e01cdb34657",
-      "type": "videos",
-      "url": "/uploads/videos/1768634191228_WhatsApp Video 2026-01-04 at 8.00.25 PM.mp4",
-      "duration": 36,
-      "show_count": 1
-    }
-  ],
-  "SCREEN_004": [
-    {
-      "id": "231d7670-fca5-4c10-9215-808e2e033a2c",
-      "type": "videos",
-      "url": "/uploads/videos/1768634191228_WhatsApp Video 2026-01-04 at 8.00.25 PM.mp4",
-      "duration": 36,
-      "show_count": 1
-    }
-  ],
-  "SCREEN_005": [
-    {
-      "id": "3e38d07c-ea9d-47e4-ad05-4447b0c3bb65",
-      "type": "videos",
-      "url": "/uploads/videos/1768634191228_WhatsApp Video 2026-01-04 at 8.00.25 PM.mp4",
-      "duration": 36,
-      "show_count": 44
-    }
-  ]
+  "SCREEN_1": {
+    "location": "Akole",
+    "items": []
+  },
+  "SCREEN_2": {
+    "location": "Loni",
+    "items": []
+  },
+  "SCREEN_3": {
+    "location": "CIDCO",
+    "items": []
+  },
+  "SCREEN_4": {
+    "location": "MIT Area",
+    "items": []
+  },
+  "SCREEN_5": {
+    "location": "Baba-Pump",
+    "items": []
+  },
+  "SCREEN_6": {
+    "location": "Satara",
+    "items": []
+  },
+  "SCREEN_7": {
+    "location": "Shivaji Nagar",
+    "items": []
+  },
+  "SCREEN_8": {
+    "location": "N-6",
+    "items": []
+  },
+  "SCREEN_9": {
+    "location": "MGM",
+    "items": []
+  },
+  "SCREEN_10": {
+    "location": "Chikalthana",
+    "items": []
+  },
+  "SCREEN_11": {
+    "location": "Akole East",
+    "items": []
+  }
 }

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- AUTH CHECK -->
+    <script>
+        if (!localStorage.getItem('authToken')) {
+            window.location.href = '/login.html';
+        }
+    </script>
+    <title>Live Stream Control | Smart Signage</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --glass-bg: rgba(33, 37, 41, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-accent: #ff4757;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1c1917 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(15, 23, 42, 0.95);
+            border-right: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            height: 100vh;
+            padding: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            margin-left: var(--sidebar-width);
+            padding: 2rem;
+            width: calc(100% - var(--sidebar-width));
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .nav-link-custom {
+            color: rgba(255, 255, 255, 0.7);
+            padding: 0.8rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link-custom:hover,
+        .nav-link-custom.active {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+
+        .nav-link-custom i {
+            width: 25px;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        .stream-indicator {
+            width: 12px;
+            height: 12px;
+            background: #6c757d;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .stream-indicator.active {
+            background: #ff4757;
+            box-shadow: 0 0 10px #ff4757;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .premium-input {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: white !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem 1rem !important;
+        }
+
+        .premium-input:focus {
+            border-color: var(--neon-accent) !important;
+            box-shadow: 0 0 0 0.25rem rgba(255, 71, 87, 0.15) !important;
+        }
+
+        .btn-live {
+            background: #ff4757;
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 2rem;
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-live:hover {
+            background: #ff6b81;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="mb-4">
+                <h4 class="mb-0 text-white d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-tower-broadcast text-danger"></i>
+                    Live Center
+                </h4>
+                <small class="text-secondary">Stream Manager V1.0</small>
+            </div>
+
+            <div class="nav flex-column mb-auto">
+                <a href="/index.html" class="nav-link-custom">
+                    <i class="fa-solid fa-arrow-left"></i> Dashboard
+                </a>
+                <a href="#" class="nav-link-custom active">
+                    <i class="fa-solid fa-video"></i> Active Stream
+                </a>
+            </div>
+
+            <div class="mt-auto">
+                <button class="btn btn-outline-danger w-100"
+                    onclick="localStorage.removeItem('authToken'); window.location.href='/login.html'">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1 text-white">Live Stream Setup</h2>
+                    <p class="text-secondary"><span id="statusIndicator" class="stream-indicator"></span> Status: <span
+                            id="statusText">Offline</span></p>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-xl-8">
+                    <div class="glass-panel p-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="text-white mb-0"><i class="fa-solid fa-link me-2 text-danger"></i>Live Content
+                            </h5>
+                            <div class="btn-group btn-group-sm">
+                                <input type="radio" class="btn-check" name="streamSource" id="srcUrl" checked
+                                    onchange="toggleSourceType('url')">
+                                <label class="btn btn-outline-danger" for="srcUrl">URL</label>
+                                <input type="radio" class="btn-check" name="streamSource" id="srcFile"
+                                    onchange="toggleSourceType('file')">
+                                <label class="btn btn-outline-danger" for="srcFile">Upload</label>
+                            </div>
+                        </div>
+
+                        <div id="urlInputGroup" class="mb-4">
+                            <label class="form-label text-secondary small text-uppercase fw-bold">Source URL (HLS/Direct
+                                MP4/YouTube)</label>
+                            <input type="text" id="streamUrl" class="form-control premium-input"
+                                placeholder="https://example.com/stream.m3u8">
+                            <div class="form-text text-muted mt-2">Enter the live video URL you want to broadcast to
+                                your screens.</div>
+                        </div>
+
+                        <div id="fileInputGroup" class="mb-4 d-none">
+                            <label class="form-label text-secondary small text-uppercase fw-bold">Upload Media
+                                (Image/Video/PDF)</label>
+                            <input type="file" id="streamFile" class="form-control premium-input">
+                            <div class="form-text text-muted mt-2">Select a file to broadcast as a live event.</div>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <button id="startBtn" class="btn btn-live flex-grow-1" onclick="startStream()">
+                                <i class="fa-solid fa-play me-2"></i>GO LIVE NOW
+                            </button>
+                            <button id="stopBtn" class="btn btn-outline-secondary px-4 d-none" onclick="stopStream()">
+                                <i class="fa-solid fa-stop me-2"></i>STOP STREAM
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4">
+                        <h5 class="mb-4 text-white"><i class="fa-solid fa-bullseye me-2 text-primary"></i>Target Screens
+                        </h5>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="text-secondary small text-uppercase fw-bold mb-2 d-block">Quick
+                                    Select</label>
+                                <select id="targetType" class="form-select premium-input"
+                                    onchange="toggleTargetLists()">
+                                    <option value="all">Broadcast to ALL Screens</option>
+                                    <option value="group">Specific Group</option>
+                                    <option value="manual">Manual Selection</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3 d-none" id="groupListContainer">
+                                <label class="text-secondary small text-uppercase fw-bold mb-2 d-block">Select
+                                    Group</label>
+                                <select id="targetGroup" class="form-select premium-input"></select>
+                            </div>
+                        </div>
+
+                        <div id="manualListContainer" class="d-none">
+                            <label class="text-secondary small text-uppercase fw-bold mb-2 d-block">Manual Screen
+                                Selection</label>
+                            <div id="screenList" class="p-3 bg-dark border border-secondary rounded"
+                                style="max-height: 200px; overflow-y: auto;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-4">
+                    <div class="glass-panel p-4 h-100">
+                        <h5 class="mb-4 text-white"><i class="fa-solid fa-eye me-2 text-success"></i>Quick Tips</h5>
+                        <ul class="text-secondary small" style="line-height: 1.8;">
+                            <li>Live streaming overrides regular playlists instantly.</li>
+                            <li>Ensure your stream link is publicly accessible by the Screens.</li>
+                            <li>HLS (.m3u8) is recommended for best stability.</li>
+                            <li>Screens will auto-resume their playlists when you click <b>STOP</b>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const API_BASE = '/api';
+        let savedGroups = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchTargets();
+            checkCurrentStreaming();
+        });
+
+        async function fetchTargets() {
+            try {
+                // Fetch Groups
+                const gRes = await axios.get(`${API_BASE}/groups`);
+                savedGroups = gRes.data;
+                const gSelect = document.getElementById('targetGroup');
+                Object.keys(savedGroups).forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.innerText = name;
+                    gSelect.appendChild(opt);
+                });
+
+                // Fetch Individual Screens
+                const sRes = await axios.get(`${API_BASE}/screens`);
+                const screens = sRes.data;
+                const list = document.getElementById('screenList');
+                Object.keys(screens).sort().forEach(id => {
+                    const div = document.createElement('div');
+                    div.className = 'form-check mb-1';
+                    div.innerHTML = `
+                        <input class="form-check-input screen-chk" type="checkbox" value="${id}" id="s_${id}">
+                        <label class="form-check-label" for="s_${id}">${id} (${screens[id].location})</label>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function toggleTargetLists() {
+            const type = document.getElementById('targetType').value;
+            document.getElementById('groupListContainer').classList.toggle('d-none', type !== 'group');
+            document.getElementById('manualListContainer').classList.toggle('d-none', type !== 'manual');
+        }
+
+        function toggleSourceType(type) {
+            document.getElementById('urlInputGroup').classList.toggle('d-none', type !== 'url');
+            document.getElementById('fileInputGroup').classList.toggle('d-none', type !== 'file');
+        }
+
+        async function checkCurrentStreaming() {
+            try {
+                const res = await axios.get(`${API_BASE}/stream/status`);
+                if (res.data) {
+                    document.getElementById('streamUrl').value = res.data.url;
+                    setStreamingUI(true);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function startStream() {
+            const isFile = document.getElementById('srcFile').checked;
+            let url = "";
+
+            if (isFile) {
+                const fileInput = document.getElementById('streamFile');
+                if (!fileInput.files.length) return alert("Please select a file to upload!");
+
+                const btn = document.getElementById('startBtn');
+                btn.disabled = true;
+                btn.innerText = "UPLOADING...";
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+                    const upRes = await axios.post(`${API_BASE}/upload`, formData);
+                    url = upRes.data.url;
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-play me-2"></i>GO LIVE NOW';
+                    return alert("Upload failed!");
+                }
+            } else {
+                url = document.getElementById('streamUrl').value.trim();
+                if (!url) return alert("Please enter a Stream URL!");
+            }
+
+            const type = document.getElementById('targetType').value;
+            let targets = [];
+
+            if (type === 'group') {
+                const groupName = document.getElementById('targetGroup').value;
+                targets = savedGroups[groupName] || [];
+            } else if (type === 'manual') {
+                const checked = document.querySelectorAll('.screen-chk:checked');
+                targets = Array.from(checked).map(c => c.value);
+                if (targets.length === 0) return alert("Select at least one screen!");
+            }
+
+            try {
+                await axios.post(`${API_BASE}/stream/start`, { url, targets });
+                setStreamingUI(true);
+            } catch (e) { alert("Failed to start stream"); }
+        }
+
+        async function stopStream() {
+            try {
+                await axios.post(`${API_BASE}/stream/stop`);
+                setStreamingUI(false);
+            } catch (e) { alert("Failed to stop stream"); }
+        }
+
+        function setStreamingUI(active) {
+            document.getElementById('statusIndicator').className = active ? 'stream-indicator active' : 'stream-indicator';
+            document.getElementById('statusText').innerText = active ? 'LIVE BROADCASTING' : 'Offline';
+            document.getElementById('statusText').className = active ? 'text-danger fw-bold' : '';
+
+            const startBtn = document.getElementById('startBtn');
+            startBtn.classList.toggle('d-none', active);
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="fa-solid fa-play me-2"></i>GO LIVE NOW';
+
+            document.getElementById('stopBtn').classList.toggle('d-none', !active);
+        }
+    </script>
+</body>
+
+</html>
