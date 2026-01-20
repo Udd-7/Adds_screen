@@ -15,17 +15,19 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --glass-bg: rgba(33, 37, 41, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --neon-accent: #0d6efd;
-            --sidebar-width: 260px;
+            --glass-bg: rgba(15, 23, 42, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --neon-accent: #3b82f6;
+            --sidebar-width: 280px;
+            --premium-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
         }
 
         body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
             min-height: 100vh;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
             overflow-x: hidden;
+            color: #f8fafc;
         }
 
         /* Layout */
@@ -58,30 +60,56 @@
 
         .glass-panel {
             background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            border-radius: 1rem;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 1.25rem;
+            box-shadow: var(--premium-shadow);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.3);
         }
 
         /* Sidebar Nav */
         .nav-link-custom {
-            color: rgba(255, 255, 255, 0.7);
-            padding: 0.8rem 1rem;
-            border-radius: 0.5rem;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 0.8rem 1.25rem;
+            border-radius: 0.75rem;
             margin-bottom: 0.5rem;
             text-decoration: none;
             display: flex;
             align-items: center;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            font-size: 0.95rem;
         }
 
-        .nav-link-custom:hover,
-        .nav-link-custom.active {
-            background: rgba(13, 110, 253, 0.15);
+        .nav-link-custom:hover {
             color: #fff;
-            border: 1px solid rgba(13, 110, 253, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-link-custom.active {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), transparent);
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .nav-link-custom.active::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 20%;
+            height: 60%;
+            width: 4px;
+            background: #3b82f6;
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
         }
 
         .nav-link-custom i {
@@ -100,24 +128,64 @@
         }
 
         .upload-zone {
-            border: 2px dashed var(--glass-border);
-            border-radius: 1rem;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 1.25rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.01);
             cursor: pointer;
+            border-spacing: 10px;
         }
 
         .upload-zone:hover,
         .upload-zone.dragover {
-            border-color: var(--neon-accent);
-            background: rgba(13, 110, 253, 0.1);
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+            transform: scale(1.01);
+        }
+
+        .btn-premium {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            transition: all 0.3s ease;
+            border-radius: 0.75rem;
+        }
+
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+            filter: brightness(1.1);
         }
 
         .preview-thumb {
-            width: 60px;
-            height: 60px;
+            width: 54px;
+            height: 54px;
             object-fit: cover;
-            border-radius: 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .table-premium {
+            --bs-table-bg: transparent;
+            margin-top: 1rem;
+        }
+
+        .table-premium th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 1rem;
+        }
+
+        .table-premium td {
+            vertical-align: middle;
+            padding: 1rem 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: rgba(255, 255, 255, 0.85);
         }
 
         /* Mobile Responsive */
@@ -166,11 +234,14 @@
 
         <!-- SIDEBAR -->
         <div class="sidebar">
-            <div class="mb-4">
-                <a class="navbar-brand fw-bold text-white fs-4" href="#">
-                    <i class="fa-solid fa-tv me-2 text-primary"></i>Baap LCD
+            <div class="mb-5 px-2">
+                <a class="navbar-brand fw-bold text-white fs-4 d-flex align-items-center gap-2" href="#"
+                    style="text-shadow: 0 0 15px rgba(59, 130, 246, 0.4);">
+                    <i class="fa-solid fa-tv text-primary"></i>
+                    <span>Baap LCD</span>
                 </a>
-                <div class="text-muted small mt-1">Manager V2.0</div>
+                <div class="text-secondary smaller opacity-75 mt-1 letter-spacing-1 fw-medium"
+                    style="font-size: 0.7rem; text-transform: uppercase;">Command Center V2.0</div>
             </div>
 
             <!-- Screen Control -->
@@ -298,17 +369,25 @@
                         <h5 class="mb-4"><i class="fa-solid fa-cloud-arrow-up me-2 text-primary"></i>Add Content</h5>
 
                         <div id="dropZone"
-                            class="upload-zone flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4 mb-3">
-                            <i class="fa-solid fa-images fa-3x mb-3 text-secondary"></i>
-                            <p class="mb-0 text-muted">Drag media here<br><small>or click to browse</small></p>
+                            class="upload-zone flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4 mb-4">
+                            <div class="mb-3">
+                                <i class="fa-solid fa-cloud-arrow-up fs-1 text-primary opacity-25"></i>
+                            </div>
+                            <div class="text-center">
+                                <p class="mb-1 fw-semibold text-white">Drag media here</p>
+                                <p class="text-secondary smaller">or click to browse your files</p>
+                            </div>
                             <input type="file" id="fileInput" class="d-none" multiple accept="image/*,video/*">
                         </div>
 
-                        <div id="uploadStatus" class="alert d-none mb-3 p-2 small"></div>
-
-                        <button class="btn btn-primary w-100" onclick="document.getElementById('fileInput').click()">
-                            <i class="fa-solid fa-folder-open me-2"></i>Select Files
+                        <button
+                            class="btn btn-premium w-100 py-3 d-flex align-items-center justify-content-center gap-2"
+                            onclick="document.getElementById('fileInput').click()">
+                            <i class="fa-solid fa-file-circle-plus fs-5"></i>
+                            <span>Select Files</span>
                         </button>
+
+                        <div id="uploadStatus" class="alert d-none mt-3 p-2 small border-0"></div>
                     </div>
                 </div>
 
@@ -316,43 +395,48 @@
                 <div class="col-xl-8 col-md-7">
                     <div class="glass-panel p-4 h-100">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div>
-                                <h5 class="mb-1"><i class="fa-solid fa-list-ul me-2 text-primary"></i>Active Playlist
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="mb-0"><i class="fa-solid fa-list-check me-2 text-primary"></i>Active Playlist
                                 </h5>
                                 <span id="currentDeviceBadge"
-                                    class="badge bg-primary bg-opacity-25 text-primary border border-primary">Loading...</span>
+                                    class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1"
+                                    style="font-size: 0.65rem;">SCREEN_1</span>
                             </div>
-                            <button class="btn btn-sm btn-outline-danger" onclick="clearPlaylist()">
-                                <i class="fa-solid fa-trash me-2"></i>Clear All
+                            <button
+                                class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 px-3 border-0 bg-danger bg-opacity-10"
+                                onclick="clearPlaylist()">
+                                <i class="fa-solid fa-trash-can smaller"></i>
+                                <span class="smaller fw-bold text-uppercase mt-1" style="font-size: 0.65rem;">Clear
+                                    All</span>
                             </button>
                         </div>
 
-                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                            <table class="table table-dark table-hover align-middle"
-                                style="--bs-table-bg: transparent;">
-                                <thead class="sticky-top bg-dark">
+                        <div class="table-responsive">
+                            <table class="table table-premium text-light mb-0">
+                                <thead>
                                     <tr>
                                         <th style="width: 80px;">Preview</th>
                                         <th>Type</th>
-                                        <th style="width: 100px;">Duration (s)</th>
-                                        <th>Plays</th>
-                                        <th class="text-end">Actions</th>
+                                        <th style="width: 100px;">Duration(s)</th>
+                                        <th class="text-center">Plays</th>
+                                        <th class="text-end" style="width: 100px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="playlistTable">
-                                    <!-- Items will be injected here -->
+                                    <!-- Items injected here -->
                                 </tbody>
                             </table>
                         </div>
+                    </div>
 
-                        <div id="emptyState" class="text-center py-5 text-muted d-none">
-                            <i class="fa-regular fa-folder-open fa-3x mb-3 opacity-50"></i>
-                            <p>Playlist is empty</p>
-                        </div>
+                    <div id="emptyState" class="text-center py-5 text-muted d-none">
+                        <i class="fa-regular fa-folder-open fa-3x mb-3 opacity-50"></i>
+                        <p>Playlist is empty</p>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- ADD SCREEN MODAL -->

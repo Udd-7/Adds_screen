@@ -1,7 +1,22 @@
 {
   "SCREEN_1": {
     "location": "Akole",
-    "items": []
+    "items": [
+      {
+        "id": "7b9aba10-a247-4292-aff9-66dd9197b59d",
+        "type": "images",
+        "url": "/uploads/images/1768887619793_baap_C_img.png",
+        "duration": 10,
+        "show_count": 21
+      },
+      {
+        "id": "60a58f6f-7231-4ea4-83cf-55aaeefae586",
+        "type": "images",
+        "url": "/uploads/images/1768887669914_WhatsApp Image 2026-01-17 at 10.06.59 AM.jpeg",
+        "duration": 10,
+        "show_count": 8
+      }
+    ]
   },
   "SCREEN_2": {
     "location": "Loni",
